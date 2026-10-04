@@ -12,6 +12,7 @@ permissions:
 env:
   KERNEL_REPO: https://github.com/rrrrrUDE/android_kernel_xiaomi_gauguin.git
   KERNEL_BRANCH: sched_ext-port
+  KERNEL_COMMIT: c259270fc32715f0aa4b68db95f531a4cf07c31b
   ARCH: arm64
   LLVM: 1
   LLVM_IAS: 1
@@ -40,6 +41,8 @@ jobs:
           git clone --depth=1 --single-branch \
             --branch "${KERNEL_BRANCH}" \
             "${KERNEL_REPO}" linux
+          cd linux
+          test "$(git rev-parse HEAD)" = "${KERNEL_COMMIT}"
 
       - name: Enforce sched_ext-port only
         working-directory: linux
