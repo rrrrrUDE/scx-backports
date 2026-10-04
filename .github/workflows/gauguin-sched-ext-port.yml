@@ -62,7 +62,8 @@ jobs:
             --enable BPF_SYSCALL \
             --enable BPF_JIT \
             --enable BPF_EVENTS \
-            --enable DEBUG_INFO_BTF
+            --enable DEBUG_INFO_BTF \
+            --enable SCHED_CLASS_EXT
 
           make O="${O}" ARCH=arm64 LLVM=1 LLVM_IAS=1 olddefconfig
 
