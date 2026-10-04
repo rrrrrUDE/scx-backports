@@ -104,7 +104,7 @@ jobs:
         run: |
           if [ -f kernel/sched/ext.c ]; then
             set +e
-            make -j2 V=1 O="${O}" ARCH=arm64 LLVM=1 LLVM_IAS=1 kernel/sched/ext.o 2>&1 | tee sched_ext-build.log
+            make -j2 V=1 O="${O}" ARCH=arm64 LLVM=1 LLVM_IAS=1 kernel/sched/build_policy.o 2>&1 | tee sched_ext-build.log
             rc=${PIPESTATUS[0]}
             exit "${rc}"
           else
