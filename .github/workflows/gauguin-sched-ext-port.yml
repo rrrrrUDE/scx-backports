@@ -103,7 +103,10 @@ jobs:
         working-directory: linux
         run: |
           if [ -f kernel/sched/ext.c ]; then
-            make -j2 O="${O}" ARCH=arm64 LLVM=1 LLVM_IAS=1 kernel/sched/ext.o
+            set +e
+            make -j2 V=1 O="${O}" ARCH=arm64 LLVM=1 LLVM_IAS=1 kernel/sched/ext.o 2>&1 | tee sched_ext-build.log
+            rc=${PIPESTATUS[0]}
+            exit "${rc}"
           else
             echo "sched_ext source is not present yet; scheduler baseline passed."
           fi
@@ -116,3 +119,11 @@ jobs:
           find "${O}/kernel/sched" -maxdepth 1 -type f -name '*.o' -print | sort || true
           echo "=== BPF struct_ops ==="
           ls -l "${O}/kernel/bpf/bpf_struct_ops.o" || true
+
+      - name: Upload sched_ext compiler log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gauguin-sched-ext-build-log-${{ github.run_id }}
+          path: linux/sched_ext-build.log
+          if-no-files-found: ignore
