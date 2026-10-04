@@ -12,7 +12,7 @@ permissions:
 env:
   KERNEL_REPO: https://github.com/rrrrrUDE/android_kernel_xiaomi_gauguin.git
   KERNEL_BRANCH: sched_ext-port
-  KERNEL_COMMIT: 58e5922cd56a82dbf99124f3c13ae91effed5174
+  KERNEL_COMMIT: 68959b29f913caeecdd2774c99cb292988936ac1
   ARCH: arm64
   LLVM: 1
   LLVM_IAS: 1
