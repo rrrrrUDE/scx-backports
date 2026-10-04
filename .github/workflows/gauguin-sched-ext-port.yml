@@ -78,14 +78,10 @@ jobs:
           make -j2 O="${O}" ARCH=arm64 LLVM=1 LLVM_IAS=1 prepare
           make -j2 O="${O}" ARCH=arm64 LLVM=1 LLVM_IAS=1 scripts
 
-      - name: Compile scheduler core
+      - name: Compile scheduler tree
         working-directory: linux
         run: |
-          make -j2 O="${O}" ARCH=arm64 LLVM=1 LLVM_IAS=1 \
-            kernel/sched/core.o \
-            kernel/sched/fair.o \
-            kernel/sched/rt.o \
-            kernel/sched/deadline.o
+          make -j2 O="${O}" ARCH=arm64 LLVM=1 LLVM_IAS=1 kernel/sched/
 
       - name: Compile scheduler support
         working-directory: linux
