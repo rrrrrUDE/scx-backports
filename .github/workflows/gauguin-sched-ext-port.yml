@@ -1,0 +1,117 @@
+name: Gauguin 4.19 sched_ext Port
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+env:
+  KERNEL_REPO: https://github.com/rrrrrUDE/android_kernel_xiaomi_gauguin.git
+  KERNEL_BRANCH: sched_ext-port
+  ARCH: arm64
+  LLVM: 1
+  LLVM_IAS: 1
+  O: out
+
+jobs:
+  sched-ext-kernel-build:
+    name: ARM64 · Linux 4.19 · sched_ext port
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            bc bison flex git make cpio rsync \
+            libelf-dev libssl-dev libncurses-dev \
+            clang llvm lld llvm-dev dwarves \
+            gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu
+
+      - name: Checkout scx-backports
+        uses: actions/checkout@v4
+
+      - name: Clone Gauguin kernel
+        run: |
+          git clone --depth=1 --single-branch \
+            --branch "${KERNEL_BRANCH}" \
+            "${KERNEL_REPO}" linux
+
+      - name: Enforce sched_ext-port only
+        working-directory: linux
+        run: |
+          test "$(git branch --show-current)" = "${KERNEL_BRANCH}"
+          test "$(git symbolic-ref --short HEAD)" = "${KERNEL_BRANCH}"
+          echo "Kernel branch: $(git branch --show-current)"
+          echo "Kernel commit: $(git rev-parse --short HEAD)"
+
+      - name: Prepare Gauguin configuration
+        working-directory: linux
+        run: |
+          make O="${O}" ARCH=arm64 LLVM=1 LLVM_IAS=1 gauguin_defconfig
+
+          # Keep this CI focused on the scheduler port. Dependencies which
+          # sched_ext needs are enabled here; the target kernel tree remains
+          # untouched except through the selected sched_ext-port branch.
+          scripts/config --file "${O}/.config" \
+            --enable BPF \
+            --enable BPF_SYSCALL \
+            --enable BPF_JIT \
+            --enable BPF_EVENTS \
+            --enable DEBUG_INFO_BTF
+
+          make O="${O}" ARCH=arm64 LLVM=1 LLVM_IAS=1 olddefconfig
+
+          grep -E '^CONFIG_(BPF|BPF_SYSCALL|BPF_JIT|BPF_EVENTS|DEBUG_INFO_BTF)=' "${O}/.config" || true
+
+      - name: Generate build prerequisites
+        working-directory: linux
+        run: |
+          make -j2 O="${O}" ARCH=arm64 LLVM=1 LLVM_IAS=1 prepare
+          make -j2 O="${O}" ARCH=arm64 LLVM=1 LLVM_IAS=1 scripts
+
+      - name: Compile scheduler core
+        working-directory: linux
+        run: |
+          make -j2 O="${O}" ARCH=arm64 LLVM=1 LLVM_IAS=1 \
+            kernel/sched/core.o \
+            kernel/sched/fair.o \
+            kernel/sched/rt.o \
+            kernel/sched/deadline.o
+
+      - name: Compile scheduler support
+        working-directory: linux
+        run: |
+          make -j2 O="${O}" ARCH=arm64 LLVM=1 LLVM_IAS=1 \
+            kernel/sched/idle.o \
+            kernel/sched/loadavg.o \
+            kernel/sched/clock.o \
+            kernel/sched/cputime.o
+
+      - name: Compile BPF struct_ops dependency
+        working-directory: linux
+        run: |
+          make -j2 O="${O}" ARCH=arm64 LLVM=1 LLVM_IAS=1 \
+            kernel/bpf/bpf_struct_ops.o
+
+      - name: Compile sched_ext object when present
+        working-directory: linux
+        run: |
+          if [ -f kernel/sched/ext.c ]; then
+            make -j2 O="${O}" ARCH=arm64 LLVM=1 LLVM_IAS=1 kernel/sched/ext.o
+          else
+            echo "sched_ext source is not present yet; scheduler baseline passed."
+          fi
+
+      - name: Show scheduler build result
+        working-directory: linux
+        if: always()
+        run: |
+          echo "=== scheduler objects ==="
+          find "${O}/kernel/sched" -maxdepth 1 -type f -name '*.o' -print | sort || true
+          echo "=== BPF struct_ops ==="
+          ls -l "${O}/kernel/bpf/bpf_struct_ops.o" || true
